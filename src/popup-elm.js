@@ -6830,37 +6830,6 @@ Elm.Native.List.make = function(localRuntime) {
 
 };
 
-Elm.Native.Popup = {};
-Elm.Native.Popup.make = function(localRuntime) {
-	localRuntime.Native = localRuntime.Native || {};
-	localRuntime.Native.Popup = localRuntime.Native.Popup || {};
-	if (localRuntime.Native.Popup.values)
-	{
-		return localRuntime.Native.Popup.values;
-	}
-
-	var Task = Elm.Native.Task.make(localRuntime);
-	var Utils = Elm.Native.Utils.make(localRuntime);
-
-
-  var getCurrentTabUrl = Task.asyncFunction(function(callback) {
-    var queryInfo = {
-      active: true,
-      currentWindow: true
-    };
-
-    chrome.tabs.query(queryInfo, function(tabs) {
-      var tab = tabs[0];
-      var url = tab.url;
-      return callback(Task.succeed([url]));
-    });
-  });
-
-	return localRuntime.Native.Popup.values = {
-		getCurrentTabUrl: getCurrentTabUrl
-	};
-};
-
 Elm.Native.Port = {};
 Elm.Native.Port.make = function(localRuntime) {
 
@@ -11165,22 +11134,35 @@ Elm.Popup.make = function (_elm) {
    $Html = Elm.Html.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
-   $Native$Popup = Elm.Native.Popup.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm),
-   $Task = Elm.Task.make(_elm);
-   var currentTab = $Native$Popup.getCurrentTabUrl;
-   var contentMailbox = $Signal.mailbox("");
-   var runner = Elm.Native.Task.make(_elm).perform(A2($Task.andThen,
-   currentTab,
-   $Signal.send(contentMailbox.address)));
+   $Signal = Elm.Signal.make(_elm);
+   var view = function (items) {
+      return A2($List.map,
+      function (x) {
+         return A2($Html.li,
+         _L.fromArray([]),
+         _L.fromArray([$Html.text(x)]));
+      },
+      items);
+   };
+   var tabs = Elm.Native.Port.make(_elm).inboundSignal("tabs",
+   "List String",
+   function (v) {
+      return typeof v === "object" && v instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.map(function (v) {
+         return typeof v === "string" || typeof v === "object" && v instanceof String ? v : _U.badPort("a string",
+         v);
+      })) : _U.badPort("an array",v);
+   });
    var main = A2($Signal.map,
-   $Html.text,
-   contentMailbox.signal);
+   function (x) {
+      return A2($Html.ul,
+      _L.fromArray([]),
+      view(x));
+   },
+   tabs);
    _elm.Popup.values = {_op: _op
-                       ,contentMailbox: contentMailbox
-                       ,currentTab: currentTab
-                       ,main: main};
+                       ,main: main
+                       ,view: view};
    return _elm.Popup.values;
 };
 Elm.Result = Elm.Result || {};
